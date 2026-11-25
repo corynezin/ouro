@@ -20,7 +20,7 @@
 #   OURO_NEXT_HUB_URL           this hub's public URL, where its computers ask for bases (default https://ouro-next-hub-b5wj7.sprites.app)
 #   OURO_NEXT_HUB_BASE_REPO     the public git repository its computers take bases from, instead of this hub; empty to use the hub's
 #                               (default https://github.com/corynezin/ouro-next)
-#   OURO_NEXT_REPO              what to clone (default git@github.com:corynezin/ouro-rebirth.git)
+#   OURO_NEXT_REPO              what to clone when <root>/source doesn't exist yet: your copy of the source (required then)
 #   OURO_NEXT_HUB_SERVICE       the service's name (default ouro-next-hub)
 #   OURO_NEXT_HUB_PORT          the hub's port (default 8080, the port the Sprite's URL reaches)
 #   OURO_NEXT_HTTP_PORT         the port the Sprite's URL routes to; empty to leave the Sprite's routing alone (default 8080)
@@ -32,7 +32,7 @@ root=${OURO_NEXT_HUB_ROOT:-$HOME/ouro-next-hub}
 token_file=${OURO_NEXT_HUB_TOKEN_FILE:-$root/secrets/sprites-token}
 name_prefix=${OURO_NEXT_HUB_NAME_PREFIX:-ouro-next-h-}
 max_sprites=${OURO_NEXT_HUB_MAX_SPRITES:-3}
-repo=${OURO_NEXT_REPO:-git@github.com:corynezin/ouro-rebirth.git}
+repo=${OURO_NEXT_REPO:-}
 service=${OURO_NEXT_HUB_SERVICE:-ouro-next-hub}
 hub_port=${OURO_NEXT_HUB_PORT:-8080}
 http_port=${OURO_NEXT_HTTP_PORT-8080}
@@ -63,6 +63,7 @@ mkdir -p "$root" "$state_dir"
 # 1. The source, at the commit. The hub hands out this checkout's main as base 0 until a base is published.
 export GIT_SSH_COMMAND=${GIT_SSH_COMMAND:-ssh -o StrictHostKeyChecking=accept-new}
 if [ ! -d "$source_dir/.git" ]; then
+  [ -n "$repo" ] || fail "no copy of the source at $source_dir; set OURO_NEXT_REPO to what to clone"
   say "cloning $repo"
   git clone --quiet "$repo" "$source_dir"
 fi

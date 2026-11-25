@@ -5,15 +5,14 @@
 #
 #   scripts/install-run-sprite.sh <commit>
 #
-# Settings: install-run.sh's own, with these defaults here:
-#   OURO_NEXT_PUBLIC_URL      https://ouro-next-run-b5wj7.sprites.app
+# Settings: install-run.sh's own, so OURO_NEXT_PUBLIC_URL is required (the Sprite's https://<name>.sprites.app), with
+# these defaults here:
 #   OURO_NEXT_ROOT            ~/ouro-next
 #   OURO_NEXT_SERVICE_PREFIX  ouro-next
 set -euo pipefail
 
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 export OURO_NEXT_SERVICES=sprite
-export OURO_NEXT_PUBLIC_URL=${OURO_NEXT_PUBLIC_URL:-https://ouro-next-run-b5wj7.sprites.app}
 export OURO_NEXT_ROOT=${OURO_NEXT_ROOT:-$HOME/ouro-next}
 export OURO_NEXT_SERVICE_PREFIX=${OURO_NEXT_SERVICE_PREFIX:-ouro-next}
 exec bash "$here/install-run.sh" "$@"
