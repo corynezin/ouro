@@ -99,6 +99,26 @@ test("a schema 23 plan reading's windows take its time as when each was read", (
   }
 })
 
+test("a plan reading whose windows an earlier migration 24 saved as a string is repaired", () => {
+  const dir = mkdtempSync(join(tmpdir(), 'ouro-store-'))
+  try {
+    const path = join(dir, 'ouro.db')
+    const old = new DatabaseSync(path)
+    for (const migration of migrations.slice(0, 30)) runMigration(old, migration)
+    old.exec('PRAGMA user_version = 30; PRAGMA foreign_keys = OFF')
+    const windows = [{ windowMinutes: 300, usedFraction: 0.1, resetsAt: 50, status: 'allowed', observedAt: 7 }]
+    old.prepare(`INSERT INTO plan_readings (account, reading_json) VALUES ('claude', ?), ('chatgpt', ?)`).run(JSON.stringify({ windows: JSON.stringify(windows), observedAt: 7 }), JSON.stringify({ windows, observedAt: 8 }))
+    old.close()
+
+    const store = new Store(path)
+    assert.deepEqual(store.planReading('claude'), { windows, observedAt: 7 })
+    assert.deepEqual(store.planReading('chatgpt'), { windows, observedAt: 8 })
+    store.close()
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
 test('a schema 24 copy of an ask from another computer is not snoozed and was last pushed when it was asked', () => {
   const dir = mkdtempSync(join(tmpdir(), 'ouro-store-'))
   try {

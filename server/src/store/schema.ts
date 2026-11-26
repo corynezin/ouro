@@ -487,12 +487,12 @@ export const migrations: readonly Migration[] = [
   // Contracts: older code would save readings whose windows don't say. A window saved before was read no later than its
   // reading.
   `
-  UPDATE plan_readings SET reading_json = json_set(reading_json, '$.windows', (
+  UPDATE plan_readings SET reading_json = json_set(reading_json, '$.windows', json((
     SELECT json_group_array(json(stamped)) FROM (
       SELECT json_set(window.value, '$.observedAt', json_extract(plan_readings.reading_json, '$.observedAt')) AS stamped
       FROM json_each(plan_readings.reading_json, '$.windows') AS window ORDER BY window.key
     )
-  ));
+  )));
   INSERT INTO meta (key, value) VALUES ('data_readable_by_schema_from', '24')
     ON CONFLICT (key) DO UPDATE SET value = excluded.value;
   `,
@@ -570,6 +570,13 @@ export const migrations: readonly Migration[] = [
   // network_removed_peers. A database that ran base 6's 27 and 28 is left as it is. Expand only: the old pins columns stay,
   // now nullable, so a release from before still reads its pins; rows it adds without target_json aren't read here.
   reconcileWithBase6,
+  // 31: a plan reading whose windows 24 saved as a JSON string, not an array, is repaired. Newer SQLite drops the JSON subtype
+  // of a subquery's result, so json_set stored the array as text; 24 now wraps it in json(), and this fixes readings it already
+  // ran on. A reading whose windows are an array is left as it is. Expand only: older code reads the repaired shape.
+  `
+  UPDATE plan_readings SET reading_json = json_set(reading_json, '$.windows', json(json_extract(reading_json, '$.windows')))
+    WHERE json_type(reading_json, '$.windows') = 'text' AND json_valid(json_extract(reading_json, '$.windows'));
+  `,
 ]
 
 function columnsOf(db: DatabaseSync, table: string): Set<string> {
