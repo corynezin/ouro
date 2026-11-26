@@ -60,10 +60,10 @@ test('connected, a private repository is made, and the branch and the base tags 
   const made = await phone.command('create_source_backup', {})
   const madeStatus = made.server.sourceBackup
   assert.ok(madeStatus.state === 'backed_up' && typeof madeStatus.lastPushedAt === 'number', 'it says when the copy was last pushed')
-  assert.deepEqual({ ...madeStatus, lastPushedAt: 0 }, { state: 'backed_up', repository: github.repositoryPath('ouro-next-private'), lastPushedAt: 0, behind: false, lastPushError: null })
+  assert.deepEqual({ ...madeStatus, lastPushedAt: 0 }, { state: 'backed_up', repository: github.repositoryPath('ouro-private'), lastPushedAt: 0, behind: false, lastPushError: null })
   assert.equal(github.requestedPrivate.at(-1), true, 'the repository was asked for private')
   assert.equal(github.authorizations.at(-1), 'Bearer ghp_backup')
-  const bare = github.repositoryPath('ouro-next-private')
+  const bare = github.repositoryPath('ouro-private')
   const git = (...args: string[]) => run.git('--git-dir', bare, ...args)
   assert.equal((await git('rev-parse', 'refs/heads/main')).trim(), await head())
   assert.equal((await git('tag', '--list')).trim(), 'base-1')
@@ -77,7 +77,7 @@ test('a version that goes live is pushed to the private copy by itself', async (
   const commit = await run.commitAll('shorter notes')
   const started = await run.control('POST', '/deploy', { reference: 'main', requestedBy: null }) as { id: string }
   assert.equal((await run.deploymentOutcome(started.id)).phase, 'live')
-  const pushed = async () => (await run.git('--git-dir', github.repositoryPath('ouro-next-private'), 'rev-parse', 'refs/heads/main')).trim()
+  const pushed = async () => (await run.git('--git-dir', github.repositoryPath('ouro-private'), 'rev-parse', 'refs/heads/main')).trim()
   await waitFor('the live version to reach the private copy', async () => await pushed() === commit, 60_000)
   await waitFor('the phone to see it backed up', async () => {
     const status = await backup()
