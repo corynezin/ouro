@@ -19,7 +19,7 @@
 #   OURO_NEXT_HUB_DEFAULT_MODEL the model new computers' agents use (default: the server's own)
 #   OURO_NEXT_HUB_URL           this hub's public URL, where its computers ask for bases (default https://ouro-next-hub-b5wj7.sprites.app)
 #   OURO_NEXT_HUB_BASE_REPO     the public git repository its computers take bases from, instead of this hub; empty to use the hub's
-#                               (default https://github.com/corynezin/ouro-next)
+#                               (default https://github.com/corynezin/ouro)
 #   OURO_NEXT_REPO              what to clone when <root>/source doesn't exist yet: your copy of the source (required then)
 #   OURO_NEXT_HUB_SERVICE       the service's name (default ouro-next-hub)
 #   OURO_NEXT_HUB_PORT          the hub's port (default 8080, the port the Sprite's URL reaches)
@@ -87,7 +87,7 @@ fi
 HUB_CONFIG_JSON=$(
   DIR=$root/data PORT=$hub_port SOURCE=$source_dir PREFIX=$name_prefix MAX=$max_sprites MODEL=${OURO_NEXT_HUB_DEFAULT_MODEL:-} \
     HUB_URL=${OURO_NEXT_HUB_URL:-https://ouro-next-hub-b5wj7.sprites.app} \
-    BASE_REPO=${OURO_NEXT_HUB_BASE_REPO-https://github.com/corynezin/ouro-next} "$node_bin" -e '
+    BASE_REPO=${OURO_NEXT_HUB_BASE_REPO-https://github.com/corynezin/ouro} "$node_bin" -e '
     const env = process.env
     const provisioner = { kind: "sprites", namePrefix: env.PREFIX, maxSprites: Number(env.MAX), hubUrl: env.HUB_URL }
     if (env.MODEL) provisioner.defaultModel = env.MODEL
