@@ -104,7 +104,7 @@ function baseSourceOf(env: NodeJS.ProcessEnv): BaseSource | null {
 
 /** `ouro-next` from `https://github.com/someone/ouro-next(.git)`; the base repository's name when none is configured. */
 function baseRepositoryNameOf(url: string | undefined): string {
-  return url?.replace(/\/+$/, '').split(/[/:]/).at(-1)?.replace(/\.git$/, '') || 'ouro-next'
+  return url?.replace(/\/+$/, '').split(/[/:]/).at(-1)?.replace(/\.git$/, '') || 'ouro'
 }
 
 /** The guardian names the app inside the person's copy; the server is beside it there. */

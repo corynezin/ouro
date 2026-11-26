@@ -1,26 +1,65 @@
-# Ouro (rebirth)
+# Ouro
 
-A ground-up rewrite of Ouro: new server and new iPhone app, with the same features, journeys and UI.
-It runs separately from the live system.
+Ouro runs AI coding agents on your own computers and lets you talk to them from your phone. Agents work in their own
+git worktrees, message each other and you, ask you questions when they're stuck, and can change Ouro itself: you ask
+for a feature from the iPhone app, an agent builds it, and the change ships to your server and your app.
 
-This repository is Ouro Next's main line. Bases are its releases: tags `base-<n>`, cut by the release workflow. Each has a version, `major.minor.patch`, kept in package.json and server/package.json, stepped by the workflow (`tools/set-version.ts`) and tagged `v<version>` beside the base; the app shows it in Settings → Updates. People develop in a private copy and send changes here as pull requests.
+It has three parts:
 
-## Running the server
+- **The server** (`server/`, run by `guardian/`): one per computer. It starts agents on Claude Code or Codex, keeps their
+  chats, goals and memory, and links your computers to each other over Tailscale. It also serves a web app at `/web/`.
+- **The iPhone app** (`apps/mobile/`, Expo and React Native): your agents, chats, asks and servers.
+- **The hub** (`hub/`, optional): makes cloud computers (Sprites) for people and relays push notifications.
 
-No build step: Node runs the TypeScript directly. Everything a server owns is in its data directory, under `runs/`.
+`packages/contract` holds the protocol the parts share. `journeys/` holds end-to-end tests that run real processes.
+
+## Requirements
+
+- macOS or Linux, with Node.js 24 or newer and git.
+- To run real agents: [Claude Code](https://claude.com/claude-code) or the Codex CLI, signed in. Development and tests
+  use a built-in stand-in model and need neither.
+- To link several computers: [Tailscale](https://tailscale.com), signed in to the same tailnet on each.
+- To build the iPhone app: Xcode, and an Apple developer account for a device build.
+
+## Running the server for development
+
+There's no build step: Node runs the TypeScript directly. Everything a server owns is in its data directory.
 
 ```sh
 npm ci
 OURO_DATA=$PWD/runs/dev OURO_DEFAULT_MODEL=stand-in node server/src/bin/ourod.ts
-OURO_SOCKET=$PWD/runs/dev/local.sock server/bin/ouro pair   # a one-time code for a phone
+OURO_SOCKET=$PWD/runs/dev/local.sock server/bin/ouro pair   # a one-time code for a phone or the web app
 ```
 
-`npm test` runs the fast checks. `npm run test:journeys` runs real processes with the stand-in model. Live model tests are
-in `journeys/live/`, are paid, and run only by hand.
+Leave out `OURO_DEFAULT_MODEL=stand-in` to have agents use Claude.
 
-Only one journey process runs at a time on a machine, across every checkout: the harness takes a lock
-(`$TMPDIR/ouro-rebirth-journey.lock`) when a journey file loads it, and others print who holds it and wait. A lock left
-by a process that is gone is taken over.
+## Tests
+
+```sh
+npm test                # import rules, types and unit tests: fast, run before every change
+npm run test:journeys   # end-to-end journeys with real processes and the stand-in model
+npm run test:live       # journeys/live/: real model calls, paid, run by hand only
+```
+
+Only one journey process runs at a time on a machine. The harness takes a lock (`$TMPDIR/ouro-rebirth-journey.lock`)
+and the others wait for it.
+
+## Installing on a Mac
+
+`scripts/install-run-mac.sh` installs the server as your launch agents: it runs while you're logged in, and starts again
+when you log in. It needs Homebrew, and the Tailscale app signed in to the same tailnet as your other computers.
+
+```sh
+brew install gh && gh auth login
+gh repo clone <you>/<your copy> ~/ouro/source
+~/ouro/source/scripts/install-run-mac.sh
+```
+
+It puts `ouro` on the PATH. To join your other computers, run `ouro computers invite` on one of them and paste the command
+it prints on the Mac. Or pass it to the installer, which joins once the server is live:
+`OURO_NEXT_JOIN="ouro computers join <address> <code>" ~/ouro/source/scripts/install-run-mac.sh`. Running the installer
+again updates the server to your copy's current commit. Logs are in `~/ouro/logs/`. To stop it, run
+`launchctl bootout gui/$(id -u)/com.ouro.ouro-guardian` and `…/com.ouro.ouro-host`.
 
 ## Installing on Ubuntu (an EC2 instance)
 
@@ -38,23 +77,31 @@ git clone <your copy> ~/ouro/source
 The guardian listens only on 127.0.0.1 there; `journalctl -u ouro-guardian` and `-u ouro-host` show the logs.
 
 The three installers share `scripts/install-run.sh`, which installs the server under any of the three service managers,
-and `scripts/lib/install-common.sh`; `scripts/install-run-sprite.sh` sets up a run Sprite.
+and `scripts/lib/install-common.sh`; `scripts/install-run-sprite.sh` sets up a cloud computer on [Sprites](https://sprites.dev). The header of each script lists its settings.
 
-## Installing on a Mac
+## Building the iPhone app
 
-`scripts/install-run-mac.sh` installs the server on a Mac as the person's launch agents: it runs while they're logged in
-and starts again when they log in, so run it while logged in. It needs Homebrew, and the Tailscale app signed in to the
-same tailnet as the person's other computers, which reach it there. On the Mac, with the person's copy of the source on GitHub:
+The app is a standard Expo project. `apps/mobile/app.json` carries the bundle ID and Apple team of the published app;
+change both to your own before building for a device.
 
 ```sh
-brew install gh && gh auth login
-gh repo clone <you>/<your copy> ~/ouro/source
-~/ouro/source/scripts/install-run-mac.sh
+cd apps/mobile
+npx expo run:ios        # a simulator build
 ```
 
-It puts `ouro` on the PATH. Then join the person's other computers: run `ouro computers invite` on one of them and paste
-the command it prints on the Mac. Or pass it to the installer, which joins once the server is live:
-`OURO_NEXT_JOIN="ouro computers join <address> <code>" ~/ouro/source/scripts/install-run-mac.sh`. Running the installer
-again updates it to the copy's current commit.
+`scripts/ios-archive.sh`, `ios-sign.sh` and `ios-upload.sh` make an App Store build and send it to TestFlight. A
+server can also publish over-the-air updates of the app's JavaScript to the phones paired with it.
 
-Logs are in `~/ouro/logs/`; `launchctl bootout gui/$(id -u)/com.ouro.ouro-guardian` and `…/com.ouro.ouro-host` stop it.
+## How changes flow
+
+This repository is Ouro's main line. Its releases are **bases**: tags `base-<n>`, cut by the release workflow, each with a
+version (`v<major.minor.patch>`). Servers take new bases from here. Each person runs their own copy of the source, where
+their agents change Ouro for them, and sends changes back here as pull requests. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## License and notices
+
+See [LICENSE](LICENSE). Third-party notices are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). For example, the
+browser's HEIC fallback loads the unmodified [libheif-js](https://github.com/catdad-experiments/libheif-js) bundle (LGPL-3.0)
+in a separate worker, and serves its license at `/web/libheif-license.txt`.
+
+Security issues: see [SECURITY.md](SECURITY.md).
